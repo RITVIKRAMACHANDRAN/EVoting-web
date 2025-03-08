@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const { Contract, Wallet, JsonRpcProvider } = require("ethers");
+const { JsonRpcProvider } = require("ethers");
+const { Contract, Wallet } = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
