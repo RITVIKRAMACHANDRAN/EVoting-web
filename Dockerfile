@@ -24,6 +24,8 @@ WORKDIR /app/evoting-frontend
 RUN npm install --force --legacy-peer-deps
 RUN npm run build
 
+# Set environment variable to fix OpenSSL issues
+ENV NODE_OPTIONS="--openssl-legacy-provider"
 
 
 # Move frontend build to backend public folder (optional)
