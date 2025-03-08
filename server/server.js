@@ -1,8 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const { ethers } = require("ethers");
-const { JsonRpcProvider } = require("ethers");
+const { ethers, Contract, Wallet, JsonRpcProvider } = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
@@ -19,15 +18,17 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // Load Contract ABI
-const contractABI = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "abis", "EVoting.json"), "utf-8")
-);
+const contractABI = JSON.parse(fs.readFileSync(path.join(__dirname, "abis", "EVoting.json"), "utf-8"));
 
 // Ethers v6 - Correct provider initialization
-
-const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+const provider = new JsonRpcProvider(process.env.RPC_URL);
 const wallet = new Wallet(process.env.PRIVATE_KEY, provider);
 const contract = new Contract(process.env.CONTRACT_ADDRESS, contractABI.abi, wallet);
+
+// Temporary storage for OTPs and Fingerprints
+const otpStorage = {};
+const fingerprintStorage = {};
+const aadhaarStorage = {}; // Store Aadhaar verification
 
 /// ======================================================
 ///  🔹 CANDIDATE MANAGEMENT ROUTES
@@ -62,12 +63,20 @@ app.post("/api/addCandidate", async (req, res) => {
 ///  🔹 VOTER MANAGEMENT ROUTES
 /// ======================================================
 
-// ✅ Register Voter (Admin Only)
+// ✅ Register Voter with Aadhaar ID (Admin Only)
 app.post("/api/registerVoter", async (req, res) => {
   try {
-    const { voterAddress } = req.body;
+    const { voterAddress, aadhaarId } = req.body;
+
+    if (aadhaarStorage[aadhaarId]) {
+      return res.status(400).json({ error: "Aadhaar ID already registered!" });
+    }
+
     const tx = await contract.addVoter(voterAddress);
     await tx.wait();
+    
+    // Store Aadhaar ID
+    aadhaarStorage[aadhaarId] = voterAddress;
     res.json({ message: "Voter registered successfully!" });
   } catch (error) {
     console.error("Error registering voter:", error);
@@ -88,17 +97,20 @@ app.get("/api/voters", async (req, res) => {
 
 
 /// ======================================================
-///  🔹 AUTHENTICATION ROUTES
+///  🔹 AUTHENTICATION ROUTES (OTP + Fingerprint + Aadhaar)
 /// ======================================================
 
-// ✅ 1️⃣ Email OTP Authentication
-const otpStorage = {}; // Store OTP temporarily
-
+// ✅ 1️⃣ Email OTP + Aadhaar Authentication
 app.post("/api/sendOTP", async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, aadhaarId } = req.body;
+
+    if (!aadhaarStorage[aadhaarId]) {
+      return res.status(400).json({ error: "Aadhaar ID not registered!" });
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000); // Generate 6-digit OTP
-    otpStorage[email] = otp; // Store OTP for verification
+    otpStorage[email] = { otp, expiresAt: Date.now() + 5 * 60 * 1000 }; // Expiry in 5 minutes
 
     // Send OTP via Email
     let transporter = nodemailer.createTransport({
@@ -126,12 +138,14 @@ app.post("/api/sendOTP", async (req, res) => {
 app.post("/api/verifyOTP", (req, res) => {
   try {
     const { email, otp } = req.body;
-    if (otpStorage[email] && otpStorage[email] === parseInt(otp)) {
-      delete otpStorage[email]; // OTP used, remove from storage
-      res.json({ message: "OTP verified successfully!" });
-    } else {
-      res.status(400).json({ error: "Invalid OTP" });
+    const storedOTP = otpStorage[email];
+
+    if (!storedOTP || storedOTP.otp !== parseInt(otp) || storedOTP.expiresAt < Date.now()) {
+      return res.status(400).json({ error: "Invalid or expired OTP" });
     }
+
+    delete otpStorage[email]; // OTP used, remove from storage
+    res.json({ message: "OTP verified successfully!" });
   } catch (error) {
     console.error("Error verifying OTP:", error);
     res.status(500).json({ error: "Failed to verify OTP" });
@@ -140,8 +154,6 @@ app.post("/api/verifyOTP", (req, res) => {
 
 
 /// ✅ 2️⃣ Fingerprint Authentication (WebAuthn API)
-const fingerprintStorage = {}; // Store registered fingerprints
-
 app.post("/api/registerFingerprint", (req, res) => {
   try {
     const { userId, fingerprintData } = req.body;
@@ -156,6 +168,7 @@ app.post("/api/registerFingerprint", (req, res) => {
 app.post("/api/verifyFingerprint", (req, res) => {
   try {
     const { userId, fingerprintData } = req.body;
+
     if (fingerprintStorage[userId] === fingerprintData) {
       res.json({ message: "Fingerprint verified successfully!" });
     } else {
@@ -186,4 +199,17 @@ app.post("/api/vote", async (req, res) => {
 });
 
 // ✅ Get Voting Results
-app
+app.get("/api/results", async (req, res) => {
+  try {
+    const results = await contract.getResults();
+    res.json({ results });
+  } catch (error) {
+    console.error("Error fetching results:", error);
+    res.status(500).json({ error: "Failed to fetch results" });
+  }
+});
+
+// Start Server
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
+});
