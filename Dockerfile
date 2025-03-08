@@ -21,7 +21,7 @@ RUN npm install --legacy-peer-deps --force
 ENV NODE_OPTIONS="--openssl-legacy-provider"
 
 # Build the frontend
-RUN npm run build
+RUN  ENV NODE_OPTIONS="--openssl-legacy-provider"npm run build
 
 # Move frontend build to backend's public folder
 RUN mv build ../server/public
