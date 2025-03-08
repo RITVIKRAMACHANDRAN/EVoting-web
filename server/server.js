@@ -1,8 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const { JsonRpcProvider } = require("ethers");
-const { Contract, Wallet } = require("ethers");
+const { ethers,Contract, Wallet } = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
@@ -17,7 +16,7 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // ✅ Fix: Initialize Ethers Provider for v6
-const provider = new JsonRpcProvider(process.env.RPC_URL);
+const provider = ethers.getDefaultProvider(process.env.RPC_URL);
 const wallet = new Wallet(process.env.PRIVATE_KEY, provider);
 
 // ✅ Load Contract ABI and Address
