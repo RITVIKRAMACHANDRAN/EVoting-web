@@ -1,8 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const { ethers, Contract, Wallet } = require("ethers");
-const ethers = require("ethers");
+const { ethers,Contract, Wallet } = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
