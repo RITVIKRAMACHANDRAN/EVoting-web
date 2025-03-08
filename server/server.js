@@ -1,7 +1,8 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const { ethers, Contract, Wallet, JsonRpcProvider } = require("ethers");
+const { ethers, Contract, Wallet } = require("ethers");
+const ethers = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
@@ -21,7 +22,7 @@ app.use(bodyParser.json());
 const contractABI = JSON.parse(fs.readFileSync(path.join(__dirname, "abis", "EVoting.json"), "utf-8"));
 
 // Ethers v6 - Correct provider initialization
-const provider = new JsonRpcProvider(process.env.RPC_URL);
+const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const wallet = new Wallet(process.env.PRIVATE_KEY, provider);
 const contract = new Contract(process.env.CONTRACT_ADDRESS, contractABI.abi, wallet);
 
