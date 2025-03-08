@@ -10,12 +10,17 @@ COPY package*.json ./
 # Install backend dependencies
 RUN npm install
 
+# Install dependencies separately before building
+WORKDIR /app/evoting-frontend
+RUN npm install --force
+RUN npm run build
+
 # Copy backend files
 COPY . .
 
 # Build the frontend
 WORKDIR /app/evoting-frontend
-RUN npm install --omit=dev && npm run build
+RUN npm install --omit=dev --legacy-peer-deps && npm run build
 
 # Move frontend build to backend public folder (optional)
 WORKDIR /app
