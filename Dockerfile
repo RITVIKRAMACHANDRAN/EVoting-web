@@ -19,8 +19,12 @@ RUN npm run build
 COPY . .
 
 # Build the frontend
+ENV NODE_OPTIONS="--openssl-legacy-provider"
 WORKDIR /app/evoting-frontend
-RUN npm install --omit=dev --legacy-peer-deps && npm run build
+RUN npm install --force --legacy-peer-deps
+RUN npm run build
+
+
 
 # Move frontend build to backend public folder (optional)
 WORKDIR /app
